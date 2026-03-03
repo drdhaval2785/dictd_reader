@@ -1,0 +1,45 @@
+# https://dart.dev/guides/libraries/private-files
+# Created by https://www.toptal.com/developers/gitignore/api/dart
+# Edit at https://www.toptal.com/developers/gitignore?templates=dart
+
+### Dart ###
+# Include the .dart_tool/ directory in the .gitignore file.
+# This directory is used by the Dart SDK and various tools.
+.dart_tool/
+
+# Property files for Android and iOS can contain sensitive information.
+*.properties
+
+# Include the .packages file in the .gitignore file.
+# This file is deprecated but still used by some older Dart tools.
+.packages
+
+# Include the pubspec.lock file in the .gitignore file.
+# This file is used to lock the versions of your dependencies.
+# However, for packages, it's often recommended to NOT commit it.
+pubspec.lock
+
+# Build artifacts
+build/
+
+# HTTP coverage report
+doc/api/
+coverage/
+
+# Avoid committing the .pub-cache/ directory.
+.pub-cache/
+
+# Test generated files
+test/data/*.dz
+test/data/*.dict
+!test/data/*.dictd
+!test/data/*.index
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
