@@ -1,6 +1,7 @@
-## 1.0.0
+## 0.1.0
 
 - Initial release.
-- Ported from existing code.
-- Removed Flutter dependency.
-- Added support for `.dict.dz` decompression using `dart:io`.
+- Support for DICTD `.index` and `.index.gz` parsing.
+- Support for random access reading of `.dict` and `.dict.dz` (dictzip) files.
+- In-situ reading of compressed files using `dictzip_reader`.
+- Pure Dart implementation, no Flutter dependency.

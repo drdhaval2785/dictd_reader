@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:test/test.dart';
 import 'package:dictd_reader/dictd_reader.dart';
 
@@ -16,6 +17,23 @@ void main() {
       expect(entries[1]['word'], 'world');
       expect(entries[1]['offset'], 5);
       expect(entries[1]['length'], 5);
+    });
+
+    test('parseIndex parses gzipped index correctly', () async {
+      final parser = DictdParser();
+      final gzippedIndexPath = '$indexPath.gz';
+      final indexBytes = File(indexPath).readAsBytesSync();
+      final gzippedIndexBytes = gzip.encode(indexBytes);
+      File(gzippedIndexPath).writeAsBytesSync(gzippedIndexBytes);
+
+      try {
+        final entries = await parser.parseIndex(gzippedIndexPath).toList();
+        expect(entries.length, 2);
+        expect(entries[0]['word'], 'hello');
+      } finally {
+        final f = File(gzippedIndexPath);
+        if (f.existsSync()) f.deleteSync();
+      }
     });
   });
 

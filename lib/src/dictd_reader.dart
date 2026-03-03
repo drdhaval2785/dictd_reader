@@ -24,8 +24,12 @@ class DictdParser {
       throw FileSystemException('DICTD .index file not found', indexPath);
     }
 
-    final lines = file
-        .openRead()
+    Stream<List<int>> byteStream = file.openRead();
+    if (indexPath.endsWith('.gz')) {
+      byteStream = byteStream.transform(gzip.decoder);
+    }
+
+    final lines = byteStream
         .transform(utf8.decoder)
         .transform(const LineSplitter());
 
