@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:dictzip_reader/dictzip_reader.dart';
 
 /// Parser and Reader for the DICTD dictionary format.
 ///
@@ -92,57 +93,60 @@ class DictdParser {
     }
     return result;
   }
-
-  /// Fully decompresses a `.dict.dz` (dictzip / gzip) file to a `.dict` file.
-  ///
-  /// Returns the path to the decompressed `.dict` file.
-  /// If [dictPath] already ends in `.dict` (not `.dz`), returns it unchanged.
-  Future<String> maybeDecompressDictZ(String dictPath) async {
-    if (!dictPath.endsWith('.dz') && !dictPath.endsWith('.gz')) return dictPath;
-
-    // Strip the compression extension to get the target path
-    final target = dictPath.endsWith('.dz')
-        ? dictPath.substring(0, dictPath.length - 3) // .dict.dz → .dict
-        : dictPath.substring(0, dictPath.length - 3); // .dict.gz → .dict
-
-    if (await File(target).exists()) return target;
-
-    final bytes = await File(dictPath).readAsBytes();
-    final decompressed = gzip.decode(bytes);
-    await File(target).writeAsBytes(decompressed);
-    return target;
-  }
 }
 
-/// Reads definitions from a DICTD `.dict` file using stored offsets/lengths.
+/// Reads definitions from a DICTD `.dict` or `.dict.dz` file using stored offsets/lengths.
 class DictdReader {
   final String dictPath;
   RandomAccessFile? _raf;
+  DictzipReader? _dzReader;
 
   DictdReader(this.dictPath);
 
-  /// Opens the `.dict` file for repeated random-access reads.
+  bool get _isCompressed => dictPath.endsWith('.dz') || dictPath.endsWith('.gz');
+
+  /// Opens the file for repeated random-access reads.
   Future<void> open() async {
-    _raf = await File(dictPath).open(mode: FileMode.read);
+    if (_isCompressed) {
+      _dzReader = DictzipReader(dictPath);
+      await _dzReader!.open();
+    } else {
+      _raf = await File(dictPath).open(mode: FileMode.read);
+    }
   }
 
   /// Reads the definition at [offset] with [length] bytes.
   Future<String> readAtOffset(int offset, int length) async {
-    if (_raf == null) throw StateError('DictdReader not opened.');
-    await _raf!.setPosition(offset);
-    final bytes = await _raf!.read(length);
-    return utf8.decode(bytes, allowMalformed: true);
+    if (_isCompressed) {
+      if (_dzReader == null) throw StateError('DictdReader not opened.');
+      return await _dzReader!.read(offset, length);
+    } else {
+      if (_raf == null) throw StateError('DictdReader not opened.');
+      await _raf!.setPosition(offset);
+      final bytes = await _raf!.read(length);
+      return utf8.decode(bytes, allowMalformed: true);
+    }
   }
 
   /// One-shot read without keeping the file open.
   Future<String> readEntry(int offset, int length) async {
-    final raf = await File(dictPath).open(mode: FileMode.read);
-    try {
-      await raf.setPosition(offset);
-      final bytes = await raf.read(length);
-      return utf8.decode(bytes, allowMalformed: true);
-    } finally {
-      await raf.close();
+    if (_isCompressed) {
+      final reader = DictzipReader(dictPath);
+      await reader.open();
+      try {
+        return await reader.read(offset, length);
+      } finally {
+        await reader.close();
+      }
+    } else {
+      final raf = await File(dictPath).open(mode: FileMode.read);
+      try {
+        await raf.setPosition(offset);
+        final bytes = await raf.read(length);
+        return utf8.decode(bytes, allowMalformed: true);
+      } finally {
+        await raf.close();
+      }
     }
   }
 
@@ -150,5 +154,7 @@ class DictdReader {
   Future<void> close() async {
     await _raf?.close();
     _raf = null;
+    await _dzReader?.close();
+    _dzReader = null;
   }
 }

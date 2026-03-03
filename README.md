@@ -15,7 +15,7 @@ Add `dictd_reader` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  dictd_reader: ^1.0.0
+  dictd_reader: ^0.1.0
 ```
 
 ## Usage

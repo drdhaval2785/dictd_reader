@@ -1,12 +1,13 @@
 name: dictd_reader
 description: A Dart package for reading DICTD dictionary files (.index and .dict/.dict.dz).
-version: 1.0.0
+version: 0.1.0
 repository: https://github.com/dhaval/dictd_reader
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
+  dictzip_reader: ^0.1.0
 
 dev_dependencies:
   lints: ^3.0.0
