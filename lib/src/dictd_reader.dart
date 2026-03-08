@@ -154,6 +154,38 @@ class DictdReader {
     }
   }
 
+  /// Reads multiple definitions in one batch.
+  /// [entries] is a list of objects with [offset] and [length].
+  /// This optimizes reading by sorting and minimizing seeks.
+  Future<List<String>> readEntries(
+      List<({int offset, int length})> entries) async {
+    if (entries.isEmpty) return [];
+
+    if (_isCompressed) {
+      if (_dzReader == null) throw StateError('DictdReader not opened.');
+      final queries =
+          entries.map((e) => (e.offset, e.length)).toList();
+      return await _dzReader!.readBulk(queries);
+    } else {
+      if (_raf == null) throw StateError('DictdReader not opened.');
+
+      // Keep track of original indices to return results in order
+      final indexedEntries = entries.asMap().entries.toList();
+
+      // Sort by offset for sequential access
+      indexedEntries.sort((a, b) => a.value.offset.compareTo(b.value.offset));
+
+      final results = List<String?>.filled(entries.length, null);
+
+      for (final entry in indexedEntries) {
+        await _raf!.setPosition(entry.value.offset);
+        final bytes = await _raf!.read(entry.value.length);
+        results[entry.key] = utf8.decode(bytes, allowMalformed: true);
+      }
+      return results.cast<String>();
+    }
+  }
+
   /// Closes the underlying file.
   Future<void> close() async {
     await _raf?.close();

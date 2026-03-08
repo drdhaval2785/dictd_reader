@@ -1,3 +1,7 @@
+## 0.1.1
+
+- Added `readEntries` to `DictdReader` for efficient batch reading of definitions.
+
 ## 0.1.0
 
 - Initial release.

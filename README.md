@@ -58,6 +58,18 @@ void main() async {
 }
 ```
 
+### Batch Reading
+
+For improved performance when reading multiple definitions, use `readEntries`:
+
+```dart
+final entries = [
+  (offset: 0, length: 5),
+  (offset: 5, length: 5),
+];
+final definitions = await reader.readEntries(entries);
+```
+
 ## License
 
 This project is licensed under the GNU GPLv3 License - see the [LICENSE](LICENSE) file for details.
