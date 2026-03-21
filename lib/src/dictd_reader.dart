@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'package:dictzip_reader/dictzip_reader.dart';
+import 'package:dictzip_reader/dictzip_reader.dart' as dz;
 import 'source.dart';
 
 /// Parser and Reader for the DICTD dictionary format.
@@ -104,7 +104,7 @@ class DictdParser {
 class DictdReader {
   final String dictPath;
   RandomAccessSource? _source;
-  DictzipReader? _dzReader;
+  dz.DictzipReader? _dzReader;
 
   DictdReader(this.dictPath);
 
@@ -121,7 +121,7 @@ class DictdReader {
     if (_isCompressed) {
       // NOTE: DictzipReader currently only supports paths.
       // Special support for RandomAccessSource in dictzip_reader is planned.
-      _dzReader = DictzipReader(dictPath);
+      _dzReader = dz.DictzipReader(dictPath);
       await _dzReader!.open();
     }
   }
@@ -141,7 +141,7 @@ class DictdReader {
   /// One-shot read without keeping the file open.
   Future<String> readEntry(int offset, int length) async {
     if (_isCompressed) {
-      final reader = DictzipReader(dictPath);
+      final reader = dz.DictzipReader(dictPath);
       await reader.open();
       try {
         return await reader.read(offset, length);
