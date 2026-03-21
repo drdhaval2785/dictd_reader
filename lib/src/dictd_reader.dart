@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dictzip_reader/dictzip_reader.dart';
+import 'source.dart';
 
 /// Parser and Reader for the DICTD dictionary format.
 ///
@@ -102,7 +103,7 @@ class DictdParser {
 /// Reads definitions from a DICTD `.dict` or `.dict.dz` file using stored offsets/lengths.
 class DictdReader {
   final String dictPath;
-  RandomAccessFile? _raf;
+  RandomAccessSource? _source;
   DictzipReader? _dzReader;
 
   DictdReader(this.dictPath);
@@ -111,11 +112,17 @@ class DictdReader {
 
   /// Opens the file for repeated random-access reads.
   Future<void> open() async {
+    return openSource(FileRandomAccessSource(dictPath));
+  }
+
+  /// Opens the source for repeated random-access reads.
+  Future<void> openSource(RandomAccessSource source) async {
+    _source = source;
     if (_isCompressed) {
+      // NOTE: DictzipReader currently only supports paths.
+      // Special support for RandomAccessSource in dictzip_reader is planned.
       _dzReader = DictzipReader(dictPath);
       await _dzReader!.open();
-    } else {
-      _raf = await File(dictPath).open(mode: FileMode.read);
     }
   }
 
@@ -125,9 +132,8 @@ class DictdReader {
       if (_dzReader == null) throw StateError('DictdReader not opened.');
       return await _dzReader!.read(offset, length);
     } else {
-      if (_raf == null) throw StateError('DictdReader not opened.');
-      await _raf!.setPosition(offset);
-      final bytes = await _raf!.read(length);
+      if (_source == null) throw StateError('DictdReader not opened.');
+      final bytes = await _source!.read(offset, length);
       return utf8.decode(bytes, allowMalformed: true);
     }
   }
@@ -143,13 +149,12 @@ class DictdReader {
         await reader.close();
       }
     } else {
-      final raf = await File(dictPath).open(mode: FileMode.read);
+      final source = FileRandomAccessSource(dictPath);
       try {
-        await raf.setPosition(offset);
-        final bytes = await raf.read(length);
+        final bytes = await source.read(offset, length);
         return utf8.decode(bytes, allowMalformed: true);
       } finally {
-        await raf.close();
+        await source.close();
       }
     }
   }
@@ -167,29 +172,28 @@ class DictdReader {
           entries.map((e) => (e.offset, e.length)).toList();
       return await _dzReader!.readBulk(queries);
     } else {
-      if (_raf == null) throw StateError('DictdReader not opened.');
+      if (_source == null) throw StateError('DictdReader not opened.');
 
       // Keep track of original indices to return results in order
       final indexedEntries = entries.asMap().entries.toList();
 
-      // Sort by offset for sequential access
+      // Sort by offset for potential sequential access optimization in the source
       indexedEntries.sort((a, b) => a.value.offset.compareTo(b.value.offset));
 
       final results = List<String?>.filled(entries.length, null);
 
       for (final entry in indexedEntries) {
-        await _raf!.setPosition(entry.value.offset);
-        final bytes = await _raf!.read(entry.value.length);
+        final bytes = await _source!.read(entry.value.offset, entry.value.length);
         results[entry.key] = utf8.decode(bytes, allowMalformed: true);
       }
       return results.cast<String>();
     }
   }
 
-  /// Closes the underlying file.
+  /// Closes the underlying source.
   Future<void> close() async {
-    await _raf?.close();
-    _raf = null;
+    await _source?.close();
+    _source = null;
     await _dzReader?.close();
     _dzReader = null;
   }

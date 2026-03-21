@@ -58,16 +58,30 @@ void main() async {
 }
 ```
 
-### Batch Reading
-
-For improved performance when reading multiple definitions, use `readEntries`:
-
-```dart
 final entries = [
   (offset: 0, length: 5),
   (offset: 5, length: 5),
 ];
 final definitions = await reader.readEntries(entries);
+```
+
+### Random Access Source (SAF Support)
+
+To support non-file-based reading (like Android Storage Access Framework), you can implement `RandomAccessSource`:
+
+```dart
+final reader = DictdReader('path/to/dict');
+// MyCustomSource implements RandomAccessSource
+await reader.openSource(MyCustomSource());
+final definition = await reader.readAtOffset(offset, length);
+```
+
+Default file-based implementation is provided:
+
+```dart
+await reader.openSource(FileRandomAccessSource('path/to/dict'));
+// Equivalent to:
+// await reader.open();
 ```
 
 ## License

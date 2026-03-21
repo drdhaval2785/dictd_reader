@@ -1,3 +1,8 @@
+## 0.1.2
+
+- Add `RandomAccessSource` abstraction for SAF support.
+- Allow `DictdReader` to open from a custom source via `openSource()`.
+
 ## 0.1.1
 
 - Added `readEntries` to `DictdReader` for efficient batch reading of definitions.

@@ -6,8 +6,11 @@ void main() async {
   
   final reader = DictdReader(dictPath);
   
-  // Always open the reader before use
-  await reader.open();
+  // You can open a file directly:
+  // await reader.open();
+  
+  // Or use a RandomAccessSource (useful for SAF on Android):
+  await reader.openSource(FileRandomAccessSource(dictPath));
   
   try {
     // Define the entries you want to read (offset, length)
