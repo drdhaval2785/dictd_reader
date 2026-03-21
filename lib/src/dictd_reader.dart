@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:dictzip_reader/dictzip_reader.dart' as dz;
-import 'source.dart';
+import 'package:dictzip_reader/dictzip_reader.dart' show RandomAccessSource, FileRandomAccessSource;
 
 /// Parser and Reader for the DICTD dictionary format.
 ///
@@ -15,45 +15,18 @@ import 'source.dart';
 ///   - An optional `.dict.dz` file: the dict file compressed with dictzip
 ///     (a gzip variant with a seek table).
 class DictdParser {
-  /// Parses a DICTD `.index` file and yields map entries with:
-  ///   - `word`: the headword string
-  ///   - `offset`: byte offset in the `.dict` file (int)
-  ///   - `length`: byte length of the definition (int)
-  Stream<Map<String, dynamic>> parseIndex(String indexPath) async* {
-    final file = File(indexPath);
-    if (!await file.exists()) {
-      throw FileSystemException('DICTD .index file not found', indexPath);
+  /// Parses a DICTD `.index` file and yields map entries.
+  Stream<Map<String, dynamic>> parseIndex(RandomAccessSource source) async* {
+    final length = await source.length;
+    final bytes = await source.read(0, length);
+    
+    // Decompress if needed (simple gzip check)
+    Uint8List decompressedBytes = bytes;
+    if (bytes.length > 2 && bytes[0] == 0x1f && bytes[1] == 0x8b) {
+      decompressedBytes = Uint8List.fromList(gzip.decode(bytes));
     }
 
-    Stream<List<int>> byteStream = file.openRead();
-    if (indexPath.endsWith('.gz')) {
-      byteStream = byteStream.transform(gzip.decoder);
-    }
-
-    final lines = byteStream
-        .transform(utf8.decoder)
-        .transform(const LineSplitter());
-
-    await for (final line in lines) {
-      final trimmed = line.trim();
-      if (trimmed.isEmpty) continue;
-
-      final parts = trimmed.split('\t');
-      if (parts.length < 3) continue;
-
-      final word = parts[0];
-      final offsetB64 = parts[1];
-      final lengthB64 = parts[2];
-
-      try {
-        final offset = _decodeBase64Int(offsetB64);
-        final length = _decodeBase64Int(lengthB64);
-        yield {'word': word, 'offset': offset, 'length': length};
-      } catch (e) {
-        // Skip malformed entries
-        continue;
-      }
-    }
+    yield* parseIndexFromBytes(decompressedBytes);
   }
 
   /// Parses a DICTD `.index` file from raw [bytes].
@@ -111,6 +84,7 @@ class DictdReader {
   bool get _isCompressed => dictPath.endsWith('.dz') || dictPath.endsWith('.gz');
 
   /// Opens the file for repeated random-access reads.
+  @Deprecated('Use openSource(RandomAccessSource source) instead for better platform compatibility.')
   Future<void> open() async {
     return openSource(FileRandomAccessSource(dictPath));
   }
@@ -119,10 +93,8 @@ class DictdReader {
   Future<void> openSource(RandomAccessSource source) async {
     _source = source;
     if (_isCompressed) {
-      // NOTE: DictzipReader currently only supports paths.
-      // Special support for RandomAccessSource in dictzip_reader is planned.
       _dzReader = dz.DictzipReader(dictPath);
-      await _dzReader!.open();
+      await _dzReader!.openSource(source);
     }
   }
 
@@ -151,6 +123,7 @@ class DictdReader {
     } else {
       final source = FileRandomAccessSource(dictPath);
       try {
+        await source.open();
         final bytes = await source.read(offset, length);
         return utf8.decode(bytes, allowMalformed: true);
       } finally {
