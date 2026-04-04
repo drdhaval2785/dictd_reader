@@ -1,3 +1,8 @@
+## 0.1.3
+
+- Removed multiple implementation of RandomAccessSource. Now it is imported only from dictzip_reader package.
+- dictzip is read by dictzip_reader package.
+
 ## 0.1.2
 
 - Add `RandomAccessSource` abstraction for SAF support.
