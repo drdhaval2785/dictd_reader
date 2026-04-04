@@ -1,8 +1,8 @@
-import 'dart:io';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:dictzip_reader/dictzip_reader.dart' as dz;
-import 'package:dictzip_reader/dictzip_reader.dart' show RandomAccessSource, FileRandomAccessSource;
+import 'source.dart';
 
 /// Parser and Reader for the DICTD dictionary format.
 ///
@@ -19,7 +19,7 @@ class DictdParser {
   Stream<Map<String, dynamic>> parseIndex(RandomAccessSource source) async* {
     final length = await source.length;
     final bytes = await source.read(0, length);
-    
+
     // Decompress if needed (simple gzip check)
     Uint8List decompressedBytes = bytes;
     if (bytes.length > 2 && bytes[0] == 0x1f && bytes[1] == 0x8b) {
@@ -81,10 +81,10 @@ class DictdReader {
 
   DictdReader(this.dictPath);
 
-  bool get _isCompressed => dictPath.endsWith('.dz') || dictPath.endsWith('.gz');
+  bool get _isCompressed =>
+      dictPath.endsWith('.dz') || dictPath.endsWith('.gz');
 
   /// Opens the file for repeated random-access reads.
-  @Deprecated('Use openSource(RandomAccessSource source) instead for better platform compatibility.')
   Future<void> open() async {
     return openSource(FileRandomAccessSource(dictPath));
   }
@@ -95,7 +95,7 @@ class DictdReader {
     await source.open();
     if (_isCompressed) {
       _dzReader = dz.DictzipReader(dictPath);
-      await _dzReader!.openSource(source);
+      await _dzReader!.openSource(source as dz.RandomAccessSource);
     }
   }
 
@@ -142,8 +142,7 @@ class DictdReader {
 
     if (_isCompressed) {
       if (_dzReader == null) throw StateError('DictdReader not opened.');
-      final queries =
-          entries.map((e) => (e.offset, e.length)).toList();
+      final queries = entries.map((e) => (e.offset, e.length)).toList();
       return await _dzReader!.readBulk(queries);
     } else {
       if (_source == null) throw StateError('DictdReader not opened.');
@@ -157,7 +156,8 @@ class DictdReader {
       final results = List<String?>.filled(entries.length, null);
 
       for (final entry in indexedEntries) {
-        final bytes = await _source!.read(entry.value.offset, entry.value.length);
+        final bytes =
+            await _source!.read(entry.value.offset, entry.value.length);
         results[entry.key] = utf8.decode(bytes, allowMalformed: true);
       }
       return results.cast<String>();

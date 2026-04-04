@@ -1,19 +1,13 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-/// Abstract source that provides random-access read capability.
 abstract class RandomAccessSource {
-  /// Reads [length] bytes starting at [offset].
   Future<Uint8List> read(int offset, int length);
-
-  /// Returns the total size of the data source in bytes.
   Future<int> get length;
-
-  /// Releases any system resources (file handles, SAF sessions).
   Future<void> close();
+  Future<void> open();
 }
 
-/// Default implementation of [RandomAccessSource] using [dart:io].
 class FileRandomAccessSource implements RandomAccessSource {
   final String path;
   RandomAccessFile? _file;
@@ -26,6 +20,11 @@ class FileRandomAccessSource implements RandomAccessSource {
       _file = await File(path).open(mode: FileMode.read);
       _cachedLength = await _file!.length();
     }
+  }
+
+  @override
+  Future<void> open() async {
+    await _ensureOpen();
   }
 
   @override
