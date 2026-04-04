@@ -8,7 +8,10 @@ void main() {
 
     test('parseIndex parses entries correctly', () async {
       final parser = DictdParser();
-      final entries = await parser.parseIndex(indexPath).toList();
+      final source = FileRandomAccessSource(indexPath);
+      await source.open();
+      final entries = await parser.parseIndex(source).toList();
+      await source.close();
 
       expect(entries.length, 2);
       expect(entries[0]['word'], 'hello');
@@ -27,7 +30,10 @@ void main() {
       File(gzippedIndexPath).writeAsBytesSync(gzippedIndexBytes);
 
       try {
-        final entries = await parser.parseIndex(gzippedIndexPath).toList();
+        final gzippedSource = FileRandomAccessSource(gzippedIndexPath);
+        await gzippedSource.open();
+        final entries = await parser.parseIndex(gzippedSource).toList();
+        await gzippedSource.close();
         expect(entries.length, 2);
         expect(entries[0]['word'], 'hello');
       } finally {

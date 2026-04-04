@@ -92,6 +92,7 @@ class DictdReader {
   /// Opens the source for repeated random-access reads.
   Future<void> openSource(RandomAccessSource source) async {
     _source = source;
+    await source.open();
     if (_isCompressed) {
       _dzReader = dz.DictzipReader(dictPath);
       await _dzReader!.openSource(source);
